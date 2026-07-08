@@ -1,11 +1,11 @@
 import os
 from dotenv import load_dotenv
 
-# Use the latest stable import patterns
+# Imports
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import PyPDFDirectoryLoader
 
-# Unbreakable import block
 try:
     from langchain.chains.retrieval import create_retrieval_chain
     from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -18,15 +18,28 @@ from langchain_core.prompts import ChatPromptTemplate
 load_dotenv()
 
 def setup_rag_pipeline():
-    print("1. Loading FAISS Vector Database...")
-    # UPDATED: Using the current production embedding model (gemini-embedding-2)
+    print("1. Setting up Embeddings...")
     embeddings_model = GoogleGenerativeAIEmbeddings(model="gemini-embedding-2")
-    
-    vector_store = FAISS.load_local("faiss_index", embeddings_model, allow_dangerous_deserialization=True)
+    index_path = "faiss_index"
+
+    # Self-Healing Logic
+    if os.path.exists(index_path):
+        print("Loading existing FAISS index...")
+        vector_store = FAISS.load_local(index_path, embeddings_model, allow_dangerous_deserialization=True)
+    else:
+        print("Index not found! Attempting to build from 'data/' folder...")
+        if os.path.exists("data/"):
+            loader = PyPDFDirectoryLoader("data/")
+            docs = loader.load()
+            vector_store = FAISS.from_documents(docs, embeddings_model)
+            vector_store.save_local(index_path)
+            print("New index built successfully.")
+        else:
+            raise FileNotFoundError("Could not find 'faiss_index' or 'data/' folder. Please upload your PDFs to a 'data/' folder.")
+
     retriever = vector_store.as_retriever(search_kwargs={"k": 3})
     
     print("2. Initializing Gemini LLM...")
-    # UPDATED: Using the current production LLM (gemini-2.5-flash)
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.1)
     
     print("3. Building Guardrails...")
