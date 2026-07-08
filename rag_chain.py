@@ -29,8 +29,14 @@ def setup_rag_pipeline():
         if os.path.exists("data/") and os.listdir("data/"):
             loader = PyPDFDirectoryLoader("data/")
             docs = loader.load()
-            if not docs:
-                raise ValueError("The 'data/' folder exists but contains no readable PDF documents!")
+            
+            # Diagnostic: Print document metadata/length
+            print(f"Loaded {len(docs)} document(s) from data/ folder.")
+            for i, doc in enumerate(docs):
+                print(f"Doc {i} length: {len(doc.page_content)} characters.")
+            
+            if not docs or len(docs[0].page_content) < 10:
+                raise ValueError("The 'data/' folder exists but documents contain no readable text! Are these scanned images?")
             
             print(f"Building index from {len(docs)} document(s)...")
             vector_store = FAISS.from_documents(docs, embeddings_model)
@@ -55,14 +61,3 @@ def setup_rag_pipeline():
     
     rag_chain = create_retrieval_chain(retriever, create_stuff_documents_chain(llm, prompt))
     return rag_chain
-```
-
-### Critical Next Steps:
-1.  **Check your folder structure in GitHub:**
-    * Make sure the `data` folder is at the **exact same level** as `app.py`.
-    * Make sure your HR PDF files are **directly inside** that `data` folder.
-2.  **Push the update:**
-    ```cmd
-    git add rag_chain.py
-    git commit -m "Add empty document safety check to rag_chain"
-    git push -u origin main
