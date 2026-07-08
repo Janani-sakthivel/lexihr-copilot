@@ -1,12 +1,3 @@
-Environment variables
-
 .env
-
-Local database index (too large/not needed)
-
 faiss_index/
-
-Python cache (auto-generated)
-
-pycache/
-*.pyc
+__pycache__/
